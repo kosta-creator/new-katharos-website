@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
-interface FloatingTablet {
-  element: HTMLDivElement
+interface Tablet {
+  id: number
+  text: string
+  size: number
   x: number
   y: number
   z: number
@@ -16,146 +18,134 @@ interface FloatingTablet {
   floatOffset: number
 }
 
+const GREEK_TEXTS = [
+  'ΓΝΩΘΙ ΣΑΥΤΟΝ',
+  'ΜΗΔΕΝ ΑΓΑΝ',
+  'ΕΝ ΟΙΔΑ',
+  'ΠΑΝΤΑ ΡΕΙ',
+  'ΚΑΛΟΣ',
+]
+
 export default function FloatingTablets() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const tabletsRef = useRef<FloatingTablet[]>([])
-  const frameRef = useRef<number>()
-  const timeRef = useRef(0)
+  const [tablets, setTablets] = useState<Tablet[]>([])
+  const [time, setTime] = useState(0)
+  const rafRef = useRef<number>()
+  const isActiveRef = useRef(true)
 
+  // Initialize tablets once
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+    const initialTablets: Tablet[] = Array.from({ length: 5 }, (_, i) => ({
+      id: i,
+      text: GREEK_TEXTS[i % GREEK_TEXTS.length],
+      size: 70 + Math.random() * 50,
+      x: 8 + Math.random() * 84,
+      y: 15 + Math.random() * 70,
+      z: -150 - Math.random() * 200,
+      rotX: Math.random() * 20 - 10,
+      rotY: Math.random() * 40 - 20,
+      rotZ: Math.random() * 10 - 5,
+      floatSpeed: 0.4 + Math.random() * 0.4,
+      floatOffset: Math.random() * Math.PI * 2,
+    }))
+    setTablets(initialTablets)
+  }, [])
 
-    const tablets: FloatingTablet[] = []
-    const tabletCount = 5
-
-    // Create 3D stone tablets
-    for (let i = 0; i < tabletCount; i++) {
-      const element = document.createElement('div')
-      
-      // Greek text fragments
-      const greekTexts = [
-        'ΓΝΩΘΙ ΣΑΥΤΟΝ',
-        'ΜΗΔΕΝ ΑΓΑΝ',
-        'ΕΝ ΟΙΔΑ ΟΤΙ ΟΥΔΕΝ ΟΙΔΑ',
-        'ΠΑΝΤΑ ΡΕΙ',
-        'ΚΑΛΟΣ ΚΑΓΑΘΟΣ',
-      ]
-      
-      const size = 80 + Math.random() * 60
-      const x = 10 + Math.random() * 80
-      const y = 20 + Math.random() * 60
-      
-      element.style.cssText = `
-        position: absolute;
-        width: ${size}px;
-        height: ${size * 1.3}px;
-        left: ${x}%;
-        top: ${y}%;
-        background: linear-gradient(135deg, rgba(80,75,70,0.9) 0%, rgba(50,48,45,0.95) 100%);
-        border: 2px solid rgba(100,95,90,0.8);
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: serif;
-        font-size: ${size * 0.15}px;
-        color: rgba(201,168,76,0.6);
-        text-align: center;
-        padding: 10px;
-        transform-style: preserve-3d;
-        box-shadow: 
-          inset 0 0 20px rgba(0,0,0,0.5),
-          0 10px 30px rgba(0,0,0,0.4);
-        pointer-events: none;
-        will-change: transform;
-      `
-      
-      element.textContent = greekTexts[i % greekTexts.length]
-      
-      // Add chiseled texture overlay
-      const texture = document.createElement('div')
-      texture.style.cssText = `
-        position: absolute;
-        inset: 0;
-        background: repeating-linear-gradient(
-          90deg,
-          transparent,
-          transparent 2px,
-          rgba(0,0,0,0.1) 2px,
-          rgba(0,0,0,0.1) 4px
-        );
-        pointer-events: none;
-      `
-      element.appendChild(texture)
-      
-      container.appendChild(element)
-      
-      tablets.push({
-        element,
-        x: parseFloat(element.style.left),
-        y: parseFloat(element.style.top),
-        z: -100 - Math.random() * 200,
-        rotX: Math.random() * 20 - 10,
-        rotY: Math.random() * 30 - 15,
-        rotZ: Math.random() * 10 - 5,
-        floatSpeed: 0.5 + Math.random() * 0.5,
-        floatOffset: Math.random() * Math.PI * 2,
-      })
-    }
-
-    tabletsRef.current = tablets
-
-    // Animate
+  // Animation loop
+  useEffect(() => {
+    isActiveRef.current = true
+    
     const animate = () => {
-      timeRef.current += 0.016
-      
-      tablets.forEach((tablet) => {
-        const floatY = Math.sin(timeRef.current * tablet.floatSpeed + tablet.floatOffset) * 15
-        const floatRotY = Math.sin(timeRef.current * 0.3 + tablet.floatOffset) * 5
-        
-        tablet.element.style.transform = `
-          translate3d(-50%, -50%, ${tablet.z}px)
-          translateY(${floatY}px)
-          rotateX(${tablet.rotX}deg)
-          rotateY(${tablet.rotY + floatRotY}deg)
-          rotateZ(${tablet.rotZ}deg)
-        `
-      })
-      
-      frameRef.current = requestAnimationFrame(animate)
+      if (!isActiveRef.current) return
+      setTime(t => t + 0.016)
+      rafRef.current = requestAnimationFrame(animate)
     }
+    
+    rafRef.current = requestAnimationFrame(animate)
+    
+    return () => {
+      isActiveRef.current = false
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
 
-    // Scroll-based 3D shift
-    gsap.to(tablets.map(t => t.element), {
-      z: (i) => tablets[i].z + 100,
-      ease: 'none',
-      scrollTrigger: {
+  // GSAP scroll effect
+  useEffect(() => {
+    if (tablets.length === 0) return
+    
+    const triggers: ScrollTrigger[] = []
+    
+    tablets.forEach((tablet) => {
+      const el = document.querySelector(`[data-tablet-id="${tablet.id}"]`)
+      if (!el) return
+      
+      const st = ScrollTrigger.create({
         trigger: 'body',
         start: 'top top',
         end: 'bottom bottom',
-        scrub: 2,
-      },
+        scrub: 1.5,
+        onUpdate: (self) => {
+          const zShift = self.progress * 150
+          el.setAttribute('data-z-shift', String(zShift))
+        }
+      })
+      triggers.push(st)
     })
-
-    animate()
-
+    
     return () => {
-      if (frameRef.current) cancelAnimationFrame(frameRef.current)
-      tablets.forEach(t => t.element.remove())
-      tabletsRef.current = []
+      triggers.forEach(st => st.kill())
     }
-  }, [])
+  }, [tablets])
 
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 pointer-events-none z-[15]"
-      style={{ 
-        perspective: '1000px',
-        transformStyle: 'preserve-3d',
-      }}
+      className="fixed inset-0 pointer-events-none z-[15] overflow-hidden"
+      style={{ perspective: '1200px' }}
       aria-hidden="true"
-    />
+    >
+      {tablets.map((tablet) => {
+        const floatY = Math.sin(time * tablet.floatSpeed + tablet.floatOffset) * 12
+        const floatRotY = Math.sin(time * 0.25 + tablet.floatOffset) * 4
+        const zShift = parseFloat(document.querySelector(`[data-tablet-id="${tablet.id}"]`)?.getAttribute('data-z-shift') || '0')
+        
+        return (
+          <div
+            key={tablet.id}
+            data-tablet-id={tablet.id}
+            className="absolute flex items-center justify-center text-center p-3"
+            style={{
+              width: `${tablet.size}px`,
+              height: `${tablet.size * 1.3}px`,
+              left: `${tablet.x}%`,
+              top: `${tablet.y}%`,
+              background: 'linear-gradient(135deg, rgba(70,65,60,0.85) 0%, rgba(45,43,40,0.9) 100%)',
+              border: '1px solid rgba(100,95,90,0.6)',
+              borderRadius: '3px',
+              fontFamily: 'Georgia, serif',
+              fontSize: `${tablet.size * 0.13}px`,
+              color: 'rgba(201,168,76,0.5)',
+              transform: `
+                translate3d(-50%, calc(-50% + ${floatY}px), ${tablet.z + zShift}px)
+                rotateX(${tablet.rotX}deg)
+                rotateY(${tablet.rotY + floatRotY}deg)
+                rotateZ(${tablet.rotZ}deg)
+              `,
+              boxShadow: 'inset 0 0 15px rgba(0,0,0,0.5), 0 8px 25px rgba(0,0,0,0.3)',
+              willChange: 'transform',
+              transformStyle: 'preserve-3d',
+            }}
+          >
+            {tablet.text}
+            <div 
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
+              }}
+            />
+          </div>
+        )
+      })}
+    </div>
   )
 }

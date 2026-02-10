@@ -1,200 +1,186 @@
 'use client'
 
 import { useEffect, useRef, useCallback } from 'react'
-import gsap from 'gsap'
 
 interface Relic {
-  element: HTMLDivElement
+  id: number
+  x: number
   y: number
-  rotation: number
-  velocity: number
-  rotationSpeed: number
-  opacity: number
   rotX: number
   rotY: number
+  rotZ: number
+  velocity: number
+  rotSpeedX: number
+  rotSpeedY: number
+  rotSpeedZ: number
+  opacity: number
+  size: number
+  color: string
 }
 
-const MAX_RELICS = 12
-const SPAWN_THRESHOLD = 12
+const MAX_RELICS = 10
+const SPAWN_THRESHOLD = 15
+const COLORS = [
+  ['rgba(75,72,68,0.8)', 'rgba(55,52,48,0.85)'],
+  ['rgba(65,62,58,0.75)', 'rgba(45,42,38,0.8)'],
+  ['rgba(85,82,78,0.7)', 'rgba(65,62,58,0.75)'],
+]
 
 export default function FallingRelics() {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const relicsRef = useRef<Relic[]>([])
   const lastScrollY = useRef(0)
   const scrollVelocity = useRef(0)
-  const frameRef = useRef<number>()
+  const rafRef = useRef<number>()
   const isActiveRef = useRef(true)
   const spawnCooldown = useRef(0)
+  const idCounter = useRef(0)
 
-  const createRelic = useCallback((): Relic | null => {
-    const container = containerRef.current
-    if (!container) return null
+  const spawnRelic = useCallback(() => {
     if (relicsRef.current.length >= MAX_RELICS) return null
 
-    try {
-      // Create 3D cube container
-      const cube = document.createElement('div')
-      const size = 20 + Math.random() * 25
-      const startX = 5 + Math.random() * 90
-      
-      cube.style.cssText = `
-        position: absolute;
-        width: ${size}px;
-        height: ${size}px;
-        left: ${startX}vw;
-        top: -60px;
-        transform-style: preserve-3d;
-        pointer-events: none;
-        will-change: transform;
-      `
-
-      // Stone colors
-      const colors = [
-        ['rgba(80,75,70,0.85)', 'rgba(60,58,55,0.9)'],
-        ['rgba(70,68,65,0.8)', 'rgba(50,48,45,0.85)'],
-        ['rgba(90,85,80,0.75)', 'rgba(70,68,65,0.8)'],
-      ]
-      const [frontColor, sideColor] = colors[Math.floor(Math.random() * colors.length)]
-
-      // Create 6 faces of cube
-      const faces = [
-        { transform: `translateZ(${size/2}px)`, bg: frontColor },
-        { transform: `rotateY(180deg) translateZ(${size/2}px)`, bg: sideColor },
-        { transform: `rotateY(90deg) translateZ(${size/2}px)`, bg: sideColor },
-        { transform: `rotateY(-90deg) translateZ(${size/2}px)`, bg: sideColor },
-        { transform: `rotateX(90deg) translateZ(${size/2}px)`, bg: sideColor },
-        { transform: `rotateX(-90deg) translateZ(${size/2}px)`, bg: sideColor },
-      ]
-
-      faces.forEach(({ transform, bg }) => {
-        const face = document.createElement('div')
-        face.style.cssText = `
-          position: absolute;
-          width: ${size}px;
-          height: ${size}px;
-          background: ${bg};
-          transform: ${transform};
-          border: 1px solid rgba(100,95,90,0.5);
-          box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
-        `
-        cube.appendChild(face)
-      })
-      
-      container.appendChild(cube)
-      
-      return {
-        element: cube,
-        y: -60,
-        rotation: Math.random() * 360,
-        velocity: 4 + Math.random() * 6,
-        rotationSpeed: (Math.random() - 0.5) * 8,
-        opacity: 1,
-        rotX: Math.random() * 360,
-        rotY: Math.random() * 360,
-      }
-    } catch (err) {
-      console.warn('Failed to create relic:', err)
-      return null
+    const size = 18 + Math.random() * 22
+    const colorPair = COLORS[Math.floor(Math.random() * COLORS.length)]
+    
+    return {
+      id: idCounter.current++,
+      x: 5 + Math.random() * 90,
+      y: -50,
+      rotX: Math.random() * 360,
+      rotY: Math.random() * 360,
+      rotZ: Math.random() * 360,
+      velocity: 4 + Math.random() * 5,
+      rotSpeedX: (Math.random() - 0.5) * 6,
+      rotSpeedY: (Math.random() - 0.5) * 6,
+      rotSpeedZ: (Math.random() - 0.5) * 4,
+      opacity: 1,
+      size,
+      color: colorPair[0],
     }
   }, [])
 
   useEffect(() => {
     isActiveRef.current = true
-    const container = containerRef.current
-    if (!container) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const resize = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
 
     const handleScroll = () => {
       if (!isActiveRef.current) return
       
-      const currentScrollY = window.scrollY
-      const velocity = Math.abs(currentScrollY - lastScrollY.current)
+      const currentY = window.scrollY
+      const velocity = Math.abs(currentY - lastScrollY.current)
       scrollVelocity.current = velocity
-      lastScrollY.current = currentScrollY
+      lastScrollY.current = currentY
       
       if (velocity > SPAWN_THRESHOLD && 
           relicsRef.current.length < MAX_RELICS && 
           spawnCooldown.current <= 0) {
         
-        const spawnCount = Math.min(2, Math.floor(velocity / 25))
-        for (let i = 0; i < spawnCount; i++) {
-          const relic = createRelic()
-          if (relic) {
-            relicsRef.current.push(relic)
-          }
+        const count = Math.min(2, Math.floor(velocity / 25))
+        for (let i = 0; i < count; i++) {
+          const relic = spawnRelic()
+          if (relic) relicsRef.current.push(relic)
         }
-        spawnCooldown.current = 5
+        spawnCooldown.current = 4
       }
       
-      if (spawnCooldown.current > 0) {
-        spawnCooldown.current--
-      }
+      if (spawnCooldown.current > 0) spawnCooldown.current--
+    }
+
+    const drawCube = (r: Relic) => {
+      const s = r.size
+      const x = (r.x / 100) * canvas.width
+      const y = r.y
+      
+      ctx.save()
+      ctx.translate(x, y)
+      ctx.globalAlpha = r.opacity
+      
+      // Simple 2D representation of falling stone
+      ctx.fillStyle = r.color
+      ctx.beginPath()
+      ctx.moveTo(-s/2, -s/2)
+      ctx.lineTo(s/2, -s/2)
+      ctx.lineTo(s/2 * 0.8, s/2 * 0.3)
+      ctx.lineTo(-s/2 * 0.8, s/2 * 0.3)
+      ctx.closePath()
+      ctx.fill()
+      
+      // Side face
+      ctx.fillStyle = 'rgba(45,42,38,0.9)'
+      ctx.beginPath()
+      ctx.moveTo(s/2, -s/2)
+      ctx.lineTo(s/2 * 0.8, s/2 * 0.3)
+      ctx.lineTo(s/2 * 0.8, s/2)
+      ctx.lineTo(s/2, s/2 * 0.3)
+      ctx.closePath()
+      ctx.fill()
+      
+      // Edge highlight
+      ctx.strokeStyle = 'rgba(100,95,90,0.4)'
+      ctx.lineWidth = 1
+      ctx.stroke()
+      
+      ctx.restore()
     }
 
     let frameCount = 0
     const animate = () => {
       if (!isActiveRef.current) return
-      
       frameCount++
       
+      // Render at 30fps
       if (frameCount % 2 === 0) {
-        const windowHeight = window.innerHeight
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
         
-        relicsRef.current = relicsRef.current.filter((relic) => {
-          try {
-            relic.y += relic.velocity
-            relic.rotX += relic.rotationSpeed
-            relic.rotY += relic.rotationSpeed * 0.7
-            
-            if (relic.y > windowHeight - 100) {
-              relic.opacity -= 0.02
-            }
-            
-            if (relic.opacity > 0) {
-              relic.element.style.transform = `
-                translateY(${relic.y}px)
-                rotateX(${relic.rotX}deg)
-                rotateY(${relic.rotY}deg)
-              `
-              relic.element.style.opacity = String(Math.max(0, relic.opacity))
-            }
-            
-            if (relic.y > windowHeight + 50 || relic.opacity <= 0) {
-              relic.element.remove()
-              return false
-            }
-            
-            return true
-          } catch (err) {
-            try { relic.element.remove() } catch {}
-            return false
+        relicsRef.current = relicsRef.current.filter(r => {
+          r.y += r.velocity
+          r.rotX += r.rotSpeedX
+          r.rotY += r.rotSpeedY
+          r.rotZ += r.rotSpeedZ
+          
+          if (r.y > canvas.height - 100) {
+            r.opacity -= 0.025
           }
+          
+          if (r.opacity > 0) {
+            drawCube(r)
+          }
+          
+          return r.y < canvas.height + 50 && r.opacity > 0
         })
       }
       
-      frameRef.current = requestAnimationFrame(animate)
+      rafRef.current = requestAnimationFrame(animate)
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
-    frameRef.current = requestAnimationFrame(animate)
+    rafRef.current = requestAnimationFrame(animate)
 
     return () => {
       isActiveRef.current = false
+      window.removeEventListener('resize', resize)
       window.removeEventListener('scroll', handleScroll)
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current)
-      }
-      relicsRef.current.forEach((relic) => {
-        try { relic.element.remove() } catch {}
-      })
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
       relicsRef.current = []
     }
-  }, [createRelic])
+  }, [spawnRelic])
 
   return (
-    <div
-      ref={containerRef}
-      className="fixed inset-0 pointer-events-none z-[25] overflow-hidden"
-      style={{ perspective: '800px' }}
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none z-[25]"
+      style={{ opacity: 0.9 }}
       aria-hidden="true"
     />
   )
