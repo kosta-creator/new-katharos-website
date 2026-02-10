@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
@@ -16,6 +16,7 @@ interface Tablet {
   rotZ: number
   floatSpeed: number
   floatOffset: number
+  zShift: number
 }
 
 const GREEK_TEXTS = [
@@ -28,14 +29,14 @@ const GREEK_TEXTS = [
 
 export default function FloatingTablets() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [tablets, setTablets] = useState<Tablet[]>([])
   const [time, setTime] = useState(0)
+  const [scrollProgress, setScrollProgress] = useState(0)
   const rafRef = useRef<number>()
   const isActiveRef = useRef(true)
 
-  // Initialize tablets once
-  useEffect(() => {
-    const initialTablets: Tablet[] = Array.from({ length: 5 }, (_, i) => ({
+  // Generate tablets once
+  const tablets = useMemo<Tablet[]>(() => {
+    return Array.from({ length: 5 }, (_, i) => ({
       id: i,
       text: GREEK_TEXTS[i % GREEK_TEXTS.length],
       size: 70 + Math.random() * 50,
@@ -47,11 +48,11 @@ export default function FloatingTablets() {
       rotZ: Math.random() * 10 - 5,
       floatSpeed: 0.4 + Math.random() * 0.4,
       floatOffset: Math.random() * Math.PI * 2,
+      zShift: 0,
     }))
-    setTablets(initialTablets)
   }, [])
 
-  // Animation loop
+  // Animation loop (only updates time)
   useEffect(() => {
     isActiveRef.current = true
     
@@ -69,33 +70,22 @@ export default function FloatingTablets() {
     }
   }, [])
 
-  // GSAP scroll effect
+  // GSAP scroll effect (separate from animation loop)
   useEffect(() => {
-    if (tablets.length === 0) return
-    
-    const triggers: ScrollTrigger[] = []
-    
-    tablets.forEach((tablet) => {
-      const el = document.querySelector(`[data-tablet-id="${tablet.id}"]`)
-      if (!el) return
-      
-      const st = ScrollTrigger.create({
-        trigger: 'body',
-        start: 'top top',
-        end: 'bottom bottom',
-        scrub: 1.5,
-        onUpdate: (self) => {
-          const zShift = self.progress * 150
-          el.setAttribute('data-z-shift', String(zShift))
-        }
-      })
-      triggers.push(st)
+    const st = ScrollTrigger.create({
+      trigger: 'body',
+      start: 'top top',
+      end: 'bottom bottom',
+      scrub: 1.5,
+      onUpdate: (self) => {
+        setScrollProgress(self.progress)
+      }
     })
     
     return () => {
-      triggers.forEach(st => st.kill())
+      st.kill()
     }
-  }, [tablets])
+  }, [])
 
   return (
     <div
@@ -107,12 +97,11 @@ export default function FloatingTablets() {
       {tablets.map((tablet) => {
         const floatY = Math.sin(time * tablet.floatSpeed + tablet.floatOffset) * 12
         const floatRotY = Math.sin(time * 0.25 + tablet.floatOffset) * 4
-        const zShift = parseFloat(document.querySelector(`[data-tablet-id="${tablet.id}"]`)?.getAttribute('data-z-shift') || '0')
+        const currentZ = tablet.z + (scrollProgress * 150)
         
         return (
           <div
             key={tablet.id}
-            data-tablet-id={tablet.id}
             className="absolute flex items-center justify-center text-center p-3"
             style={{
               width: `${tablet.size}px`,
@@ -126,7 +115,7 @@ export default function FloatingTablets() {
               fontSize: `${tablet.size * 0.13}px`,
               color: 'rgba(201,168,76,0.5)',
               transform: `
-                translate3d(-50%, calc(-50% + ${floatY}px), ${tablet.z + zShift}px)
+                translate3d(-50%, calc(-50% + ${floatY}px), ${currentZ}px)
                 rotateX(${tablet.rotX}deg)
                 rotateY(${tablet.rotY + floatRotY}deg)
                 rotateZ(${tablet.rotZ}deg)
