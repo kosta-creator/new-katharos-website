@@ -8,7 +8,6 @@ import ParallaxSections from '@/components/ParallaxSections'
 import RainCanvas from '@/components/RainCanvas'
 import ThunderSystem from '@/components/ThunderSystem'
 import AmbientAudio from '@/components/AmbientAudio'
-import LoadingScreen from '@/components/LoadingScreen'
 import Footer from '@/components/Footer'
 import FallingRelics from '@/components/FallingRelics'
 import CustomCursor from '@/components/CustomCursor'
@@ -19,13 +18,12 @@ if (typeof window !== 'undefined') {
 }
 
 export default function Home() {
-  const [isLoading, setIsLoading] = useState(true)
-  const [isReady, setIsReady] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
   const lenisRef = useRef<Lenis | null>(null)
 
   // Initialize Lenis smooth scroll
   useEffect(() => {
-    if (isLoading) return
+    if (!isLoaded) return
 
     const lenis = new Lenis({
       duration: 1.2,
@@ -38,70 +36,37 @@ export default function Home() {
     })
 
     lenisRef.current = lenis
-
-    // Connect Lenis to GSAP ScrollTrigger
     lenis.on('scroll', ScrollTrigger.update)
 
     gsap.ticker.add((time) => {
       lenis.raf(time * 1000)
     })
-
     gsap.ticker.lagSmoothing(0)
 
     return () => {
       lenis.destroy()
-      gsap.ticker.remove((time) => {
-        lenis.raf(time * 1000)
-      })
     }
-  }, [isLoading])
+  }, [isLoaded])
 
-  // Preload images
+  // Simple load check
   useEffect(() => {
-    const images = [
-      '/assets/images/hero.jpg',
-      '/assets/images/climb.jpg',
-      '/assets/images/oracle.jpg',
-      '/assets/images/philosopher.jpg',
-    ]
-
-    let loadedCount = 0
-    images.forEach((src) => {
-      const img = new Image()
-      img.onload = () => {
-        loadedCount++
-        if (loadedCount === images.length) {
-          setTimeout(() => {
-            setIsLoading(false)
-            setTimeout(() => setIsReady(true), 100)
-          }, 2000)
-        }
-      }
-      img.onerror = () => {
-        loadedCount++
-        if (loadedCount === images.length) {
-          setTimeout(() => {
-            setIsLoading(false)
-            setTimeout(() => setIsReady(true), 100)
-          }, 2000)
-        }
-      }
-      img.src = src
-    })
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      setIsLoaded(true)
+    }, 100)
+    return () => clearTimeout(timer)
   }, [])
 
   return (
     <>
-      {isLoading && <LoadingScreen onLoaded={() => setIsLoading(false)} />}
-
       {/* Custom cursor */}
-      {isReady && <CustomCursor />}
+      <CustomCursor />
 
       {/* Falling relics on scroll */}
-      {isReady && <FallingRelics />}
+      <FallingRelics />
 
       {/* Floating 3D tablets */}
-      {isReady && <FloatingTablets />}
+      <FloatingTablets />
 
       {/* Rain overlay */}
       <RainCanvas />
