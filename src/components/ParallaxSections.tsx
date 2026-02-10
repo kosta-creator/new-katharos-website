@@ -177,7 +177,7 @@ export default function ParallaxSections() {
         {/* Parallax background image */}
         <div className="parallax-hero absolute inset-0 w-full h-[130%] -top-[15%]">
           <img
-            src="/assets/images/hero.jpg"
+            src="/assets/images/hero.png"
             alt="Ancient temple"
             className="w-full h-full object-cover"
           />
@@ -215,7 +215,7 @@ export default function ParallaxSections() {
       <section className="climb-section relative min-h-screen overflow-hidden">
         <div className="parallax-climb absolute inset-0 w-full h-[120%] -top-[10%]">
           <img
-            src="/assets/images/climb.jpg"
+            src="/assets/images/climb.png"
             alt="The climb"
             className="w-full h-full object-cover"
           />
@@ -244,7 +244,7 @@ export default function ParallaxSections() {
       <section className="oracle-section relative min-h-screen overflow-hidden">
         <div className="parallax-oracle absolute inset-0 w-full h-[120%] -top-[10%]">
           <img
-            src="/assets/images/oracle.jpg"
+            src="/assets/images/oracle.png"
             alt="The Oracle"
             className="w-full h-full object-cover"
           />
