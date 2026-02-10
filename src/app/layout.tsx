@@ -1,62 +1,40 @@
-import type { Metadata } from 'next'
-import './globals.css'
-import { seo, siteConfig } from '@/lib/config'
-import Script from 'next/script'
-import ErrorBoundary from '@/components/ErrorBoundary'
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: seo.title,
-  description: seo.description,
-  keywords: seo.keywords,
+  title: 'Katharos Systems | Truth as a Service',
+  description: 'Experience purity from chaos. Multi-agent AI debate system forging truth through sacred conflict. Seven minds. One truth.',
+  keywords: 'AI ethics, multi-agent debate, bias detection, scam prevention, AI consensus, Socratic method, truth verification',
   authors: [{ name: 'Katharos Systems' }],
   openGraph: {
-    type: 'website',
+    title: 'Katharos Systems | Truth as a Service',
+    description: 'Experience purity from chaos. Seven minds debate to forge truth.',
+    url: 'https://katharossystems.ai',
+    siteName: 'Katharos Systems',
     locale: 'en_US',
-    url: siteConfig.url,
-    title: seo.title,
-    description: seo.description,
-    siteName: siteConfig.name,
-    images: [
-      {
-        url: '/og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Katharos Systems - Truth as a Service',
-      },
-    ],
+    type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: seo.title,
-    description: seo.description,
-    images: ['/og-image.jpg'],
+    title: 'Katharos Systems | Truth as a Service',
+    description: 'Experience purity from chaos. Seven minds debate to forge truth.',
     creator: '@katharosai',
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
-}
+  robots: 'index, follow',
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
       <head>
-        {/* Plausible Analytics - Privacy-friendly */}
-        <Script
-          defer
-          data-domain="katharossystems.ai"
-          src="https://plausible.io/js/script.js"
-          strategy="lazyOnload"
-        />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className="antialiased">
-        <ErrorBoundary>{children}</ErrorBoundary>
-      </body>
+      <body>{children}</body>
     </html>
-  )
+  );
 }
